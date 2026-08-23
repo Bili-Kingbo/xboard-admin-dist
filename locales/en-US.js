@@ -909,7 +909,7 @@ window.XBOARD_TRANSLATIONS['en-US'] = {
   },
   "settings": {
     "title": "System Settings",
-    "description": "Manage core system configurations, including site, security, subscription, invite commission, nodes, email, and notifications",
+    "description": "Manage site, security, node, email, and notification settings for the internal network",
     "server": {
       "title": "Server Configuration",
       "description": "Configure node communication and synchronization settings, including communication keys, polling intervals, load balancing and other advanced options.",
@@ -1003,7 +1003,7 @@ window.XBOARD_TRANSLATIONS['en-US'] = {
     },
     "site": {
       "title": "Site Settings",
-      "description": "Configure basic site information, including site name, description, currency unit, and other core settings.",
+      "description": "Configure the internal site's name, description, access URL, and network basics.",
       "form": {
         "siteName": {
           "label": "Site Name",

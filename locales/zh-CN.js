@@ -910,10 +910,10 @@ window.XBOARD_TRANSLATIONS['zh-CN'] = {
   },
   "settings": {
     "title": "系统设置",
-    "description": "管理系统核心配置，包括站点、安全、订阅、邀请佣金、节点、邮件和通知等设置",
+    "description": "管理公司内部网络的站点、安全、节点、邮件和通知设置",
     "site": {
       "title": "站点设置",
-      "description": "配置站点基本信息，包括站点名称、描述、货币单位等核心设置。",
+      "description": "配置站点名称、描述、访问地址和内部网络基础信息。",
       "form": {
         "siteName": {
           "label": "站点名称",
