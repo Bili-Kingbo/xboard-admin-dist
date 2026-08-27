@@ -91,7 +91,7 @@
         <div class="xsi-body">
           <div class="xsi-note">特殊节点不会连接 Xboard Node，也不参与心跳、流量倍率、服务端配置生成或用户同步。系统只保存已解析的客户端配置，并按身份组原样下发。</div>
           <form id="xsi-form"><div class="xsi-grid">
-            <div class="xsi-field-wide"><label class="xsi-label">订阅地址或节点内容 <span class="xsi-required">*</span></label><textarea class="xsi-textarea" name="source" required placeholder="支持：https://... 订阅地址、Clash Meta YAML、Base64 订阅、vmess/vless/trojan/ss/hysteria2/tuic 分享链接"></textarea><div class="xsi-help">远程地址会在服务端安全拉取并立即解析，不保存含 Token 的完整订阅 URL。</div></div>
+            <div class="xsi-field-wide"><label class="xsi-label">订阅地址或节点内容 <span class="xsi-required">*</span></label><textarea class="xsi-textarea" name="source" required placeholder="支持：订阅地址、Clash Meta YAML、Base64 订阅，以及面板支持协议的分享链接（SS / VMess / VLESS / Trojan / Hysteria / TUIC / AnyTLS / SOCKS / HTTP / Naive / Mieru Simple）"></textarea><div class="xsi-help">远程地址会在服务端安全拉取并立即解析，不保存含 Token 的完整订阅 URL。</div></div>
             <div><label class="xsi-label">下发身份组 <span class="xsi-required">*</span></label><div class="xsi-groups" id="xsi-groups"><span class="xsi-help">正在读取身份组…</span></div></div>
             <div><label class="xsi-label" for="xsi-tags">节点标签</label><input class="xsi-input" id="xsi-tags" name="tags" placeholder="例如：外部线路, 临时资源"><div class="xsi-help">多个标签使用英文或中文逗号分隔。</div></div>
           </div><div class="xsi-result" id="xsi-result"></div><div class="xsi-actions"><button class="xsi-btn" type="button" data-close>取消</button><button class="xsi-btn xsi-btn-primary" type="submit">解析、导入并下发</button></div></form>
