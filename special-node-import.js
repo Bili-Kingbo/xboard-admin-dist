@@ -3,6 +3,9 @@
 
   const styles = `
   .xnd-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 32px;background:hsl(var(--foreground)/.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:xnd-fade .16s ease}
+  /* In dark mode --foreground is near-white, so the scrim has to come from the
+     background token instead of washing the page out. */
+  .dark .xnd-overlay{background:hsl(var(--background)/.78)}
   @keyframes xnd-fade{from{opacity:0}to{opacity:1}}
   @keyframes xnd-pop{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
   .xnd-dialog{width:min(620px,100%);max-height:88vh;overflow:auto;border:1px solid hsl(var(--border));border-radius:calc(var(--radius) + 4px);background:hsl(var(--background));color:hsl(var(--foreground));box-shadow:0 24px 70px hsl(var(--foreground)/.22);animation:xnd-pop .22s cubic-bezier(.22,1,.36,1)}
