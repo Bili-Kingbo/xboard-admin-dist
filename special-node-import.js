@@ -59,7 +59,15 @@
   .xnd-toast-wrap{position:fixed;left:50%;bottom:28px;z-index:90;display:flex;flex-direction:column;gap:8px;transform:translateX(-50%);pointer-events:none}
   .xnd-toast{padding:10px 16px;border:1px solid hsl(var(--border));border-radius:999px;background:hsl(var(--popover));color:hsl(var(--popover-foreground));font-size:12px;box-shadow:0 12px 32px hsl(var(--foreground)/.18);animation:xnd-pop .2s ease}
   .xnd-toast[data-tone="error"]{border-color:hsl(var(--destructive)/.5);color:hsl(var(--destructive))}
+  .xnd-filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:2px 0 14px;padding:10px 2px;border-bottom:1px solid hsl(var(--border));font-size:12px}
+  .xnd-filter-bar label{font-weight:600;white-space:nowrap}
+  .xnd-filter-bar select,.xnd-filter-bar input{height:34px;box-sizing:border-box;border:1px solid hsl(var(--border));border-radius:7px;background:hsl(var(--background));color:hsl(var(--foreground));padding:0 10px;font:12px system-ui;outline:none}
+  .xnd-filter-bar select{min-width:138px}.xnd-filter-user{position:relative;min-width:190px;flex:1;max-width:320px}.xnd-filter-user input{width:100%}
+  .xnd-filter-results{position:absolute;z-index:70;top:38px;left:0;right:0;max-height:210px;overflow:auto;border:1px solid hsl(var(--border));border-radius:8px;background:hsl(var(--popover));box-shadow:0 12px 26px hsl(var(--foreground)/.16)}
+  .xnd-filter-results[hidden]{display:none}.xnd-filter-results button{display:block;width:100%;padding:8px 10px;border:0;background:transparent;color:hsl(var(--popover-foreground));text-align:left;font-size:12px;cursor:pointer}.xnd-filter-results button:hover{background:hsl(var(--accent))}
+  .xnd-filter-clear{height:34px;padding:0 10px;border:1px solid hsl(var(--border));border-radius:7px;background:transparent;color:hsl(var(--muted-foreground));font-size:12px;cursor:pointer}
   @media (max-width:640px){.xnd-overlay{padding:14px}.xnd-dialog{max-height:92vh}}
+  @media (max-width:640px){.xnd-filter-bar{align-items:stretch}.xnd-filter-bar label{width:100%}.xnd-filter-bar select,.xnd-filter-user{flex:1;min-width:135px;max-width:none}}
   `;
 
   function ensureStyles() {
@@ -343,6 +351,93 @@
 
   function collectUserIds(selected) {
     return [...selected.values()].map(item => Number(item.id));
+  }
+
+  const nodeFilterState = { group_id: null, user_id: null, email: '' };
+
+  function publishNodeFilters() {
+    window.dispatchEvent(new CustomEvent('xboard:node-filters', {
+      detail: {
+        ...(nodeFilterState.group_id ? { group_id: Number(nodeFilterState.group_id) } : {}),
+        ...(nodeFilterState.user_id ? { user_id: Number(nodeFilterState.user_id) } : {}),
+      },
+    }));
+  }
+
+  function installNodeFilters() {
+    if (!location.hash.includes('/server/manage') || document.getElementById('xnd-node-filters')) return;
+    const heading = [...document.querySelectorAll('h2')].find(item => item.textContent?.trim() === '节点管理');
+    const header = heading?.parentElement?.parentElement;
+    if (!header) return;
+    ensureStyles();
+    const bar = document.createElement('div');
+    bar.id = 'xnd-node-filters';
+    bar.className = 'xnd-filter-bar';
+    bar.innerHTML = '<label>筛选节点</label><select aria-label="按权限组筛选"><option value="">全部权限组</option></select><div class="xnd-filter-user"><input type="search" aria-label="按用户筛选" placeholder="搜索用户邮箱"><div class="xnd-filter-results" hidden></div></div><button type="button" class="xnd-filter-clear">清除用户/权限组</button>';
+    header.insertAdjacentElement('afterend', bar);
+    const group = bar.querySelector('select');
+    const input = bar.querySelector('input');
+    const results = bar.querySelector('.xnd-filter-results');
+    const clear = bar.querySelector('.xnd-filter-clear');
+    input.value = nodeFilterState.email;
+    loadGroups().then(groups => {
+      groups.forEach(item => group.add(new Option(item.name, String(item.id))));
+      group.value = nodeFilterState.group_id || '';
+    }).catch(error => toast(error.message, 'error'));
+    group.addEventListener('change', () => {
+      nodeFilterState.group_id = group.value || null;
+      publishNodeFilters();
+    });
+    let timer;
+    const showUsers = users => {
+      results.innerHTML = users.length
+        ? users.map(user => `<button type="button" data-id="${Number(user.id)}" data-group="${Number(user.group_id) || ''}">${escapeHtml(user.email)}${user.group_name ? ` · ${escapeHtml(user.group_name)}` : ''}</button>`).join('')
+        : '<div class="xnd-empty">没有匹配的用户</div>';
+      results.hidden = false;
+    };
+    input.addEventListener('input', () => {
+      nodeFilterState.user_id = null;
+      nodeFilterState.email = input.value.trim();
+      publishNodeFilters();
+      clearTimeout(timer);
+      timer = setTimeout(() => searchUsers(nodeFilterState.email).then(showUsers).catch(error => toast(error.message, 'error')), 220);
+    });
+    input.addEventListener('focus', () => {
+      if (!results.hidden) return;
+      searchUsers(input.value.trim()).then(showUsers).catch(() => {});
+    });
+    results.addEventListener('click', event => {
+      const button = event.target.closest('button[data-id]');
+      if (!button) return;
+      nodeFilterState.user_id = button.dataset.id;
+      nodeFilterState.email = button.textContent.split(' · ')[0];
+      input.value = nodeFilterState.email;
+      results.hidden = true;
+      publishNodeFilters();
+    });
+    document.addEventListener('click', event => { if (!bar.contains(event.target)) results.hidden = true; });
+    clear.addEventListener('click', () => {
+      nodeFilterState.group_id = null;
+      nodeFilterState.user_id = null;
+      nodeFilterState.email = '';
+      group.value = '';
+      input.value = '';
+      results.hidden = true;
+      publishNodeFilters();
+    });
+    if (nodeFilterState.group_id || nodeFilterState.user_id) publishNodeFilters();
+  }
+
+  async function copyInstallCommand(node) {
+    if (node.is_special) return;
+    try {
+      const result = await api('/server/manage/installCommand?id=' + encodeURIComponent(node.id));
+      if (!result?.command) throw new Error('安装命令尚未生成');
+      await navigator.clipboard.writeText(result.command);
+      toast('安装命令已复制，请粘贴到目标服务器执行');
+    } catch (error) {
+      toast(error.message, 'error');
+    }
   }
 
   function openImportDialog(refetch) {
@@ -692,9 +787,12 @@
     openImport: openImportDialog,
     editSpecial: openSpecialEditor,
     editRouting: openRoutingEditor,
+    copyInstallCommand,
     assignUsers: openAssignDialog,
     toggleSpecial,
     deleteSpecial,
     toast,
   };
+  new MutationObserver(installNodeFilters).observe(document.documentElement, { childList: true, subtree: true });
+  installNodeFilters();
 })();
