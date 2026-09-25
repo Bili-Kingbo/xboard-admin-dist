@@ -236,6 +236,31 @@
     return wrapper;
   }
 
+  function createRoutingField(selected) {
+    const field = document.createElement('div');
+    field.className = 'xnd-field';
+    field.innerHTML = '<div class="xnd-label">Clash 分流用途</div><div class="xnd-pills"></div><div class="xnd-hint">可多选。节点会列在对应策略组供用户手动选择；未勾选仍会进入通用代理组。</div>';
+    const options = [
+      ['codex', 'OpenAI / Codex'],
+      ['claude', 'Claude'],
+      ['shedio', 'Shedio'],
+      ['international', '国外网站'],
+    ];
+    const pills = field.querySelector('.xnd-pills');
+    options.forEach(([id, label]) => {
+      const pill = document.createElement('label');
+      pill.className = 'xnd-pill';
+      pill.dataset.on = selected.has(id) ? '1' : '0';
+      pill.innerHTML = `<input type="checkbox" value="${id}" ${selected.has(id) ? 'checked' : ''}><span>${label}</span>`;
+      pill.querySelector('input').addEventListener('change', event => {
+        if (event.target.checked) selected.add(id); else selected.delete(id);
+        pill.dataset.on = event.target.checked ? '1' : '0';
+      });
+      pills.appendChild(pill);
+    });
+    return field;
+  }
+
   function createUserPicker(selected) {
     const field = document.createElement('div');
     field.className = 'xnd-field';
@@ -322,6 +347,7 @@
 
   function openImportDialog(refetch) {
     const groups = new Set();
+    const routingProfiles = new Set();
     const users = new Map();
     const userPicker = createUserPicker(users);
 
@@ -381,7 +407,7 @@
     const { close } = mount({
       title: '导入外部节点',
       subtitle: '外部节点不依赖 Xboard Node，解析完成后直接合并进所选身份组或用户的订阅。',
-      body: [sourceField, groupField, userPicker.field, tagsField, switchRow],
+      body: [sourceField, groupField, userPicker.field, createRoutingField(routingProfiles), tagsField, switchRow],
       footer,
     });
 
@@ -404,6 +430,7 @@
             group_ids: groupIds,
             user_ids: userIds,
             tags: tags.value.split(/[,，]/).map(item => item.trim()).filter(Boolean),
+            client_routing_profile_ids: [...routingProfiles],
             show: show.checked,
           }),
         });
@@ -420,6 +447,7 @@
 
   function openSpecialEditor(node, refetch) {
     const groups = new Set((node.group_ids || []).map(String));
+    const routingProfiles = new Set(node.client_routing_profile_ids || []);
     const users = new Map((node.users || []).map(user => [String(user.id), { id: String(user.id), email: user.email }]));
     const userPicker = createUserPicker(users);
 
@@ -480,7 +508,7 @@
     const { close } = mount({
       title: '编辑外部节点',
       subtitle: '这里只调整名称、标签与下发范围，节点本身的配置保持原样。',
-      body: [nameField, groupField, userPicker.field, tagsField, switchRow, meta],
+      body: [nameField, groupField, userPicker.field, createRoutingField(routingProfiles), tagsField, switchRow, meta],
       footer,
     });
 
@@ -504,6 +532,7 @@
             group_ids: groupIds,
             user_ids: userIds,
             tags: tags.value.split(/[,，]/).map(item => item.trim()).filter(Boolean),
+            client_routing_profile_ids: [...routingProfiles],
             show: show.checked,
           }),
         });
@@ -514,6 +543,56 @@
         submit.disabled = false;
         message.dataset.tone = 'error';
         message.textContent = error.message;
+      }
+    });
+  }
+
+  function openRoutingEditor(node, refetch) {
+    const routingProfiles = new Set(node.client_routing_profile_ids || []);
+    const meta = document.createElement('div');
+    meta.className = 'xnd-meta';
+    meta.textContent = `${node.is_special ? '外部节点' : '原生节点'}：${node.name || ''}`;
+    const message = document.createElement('div');
+    message.className = 'xnd-msg';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'xnd-btn';
+    cancel.textContent = '取消';
+    const submit = document.createElement('button');
+    submit.type = 'button';
+    submit.className = 'xnd-btn xnd-btn-primary';
+    submit.textContent = '保存用途';
+    const actions = document.createElement('div');
+    actions.className = 'xnd-actions';
+    actions.append(cancel, submit);
+    const footer = document.createElement('div');
+    footer.append(message, actions);
+    const { close } = mount({
+      title: '设置 Clash 分流节点',
+      subtitle: '用途只影响客户端订阅中的手动选择列表，不改变节点服务端配置或身份组权限。',
+      body: [meta, createRoutingField(routingProfiles)],
+      footer,
+    });
+    cancel.addEventListener('click', close);
+    submit.addEventListener('click', async () => {
+      submit.disabled = true;
+      message.textContent = '正在保存…';
+      try {
+        await api(node.is_special ? '/server/manage/updateSpecial' : '/server/manage/update', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: Number(node.is_special ? node.special_id : node.id),
+            client_routing_profile_ids: [...routingProfiles],
+          }),
+        });
+        toast('Clash 分流用途已更新');
+        close();
+        if (typeof refetch === 'function') refetch();
+      } catch (error) {
+        message.dataset.tone = 'error';
+        message.textContent = error.message;
+      } finally {
+        submit.disabled = false;
       }
     });
   }
@@ -612,6 +691,7 @@
   window.__xboardNodeDialog = {
     openImport: openImportDialog,
     editSpecial: openSpecialEditor,
+    editRouting: openRoutingEditor,
     assignUsers: openAssignDialog,
     toggleSpecial,
     deleteSpecial,
